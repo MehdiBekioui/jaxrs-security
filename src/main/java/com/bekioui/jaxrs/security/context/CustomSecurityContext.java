@@ -15,26 +15,44 @@
  */
 package com.bekioui.jaxrs.security.context;
 
+import static java.util.Objects.requireNonNull;
+
 import java.security.Principal;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.ws.rs.core.SecurityContext;
 
-public class AuthorizedContext implements SecurityContext {
+public class CustomSecurityContext implements SecurityContext {
 
-    private final Token token;
+    private final String identifier;
 
-    public AuthorizedContext(Token token) {
-        this.token = token;
+    private final Set<String> roles;
+
+    public CustomSecurityContext() {
+        this.identifier = "Anonymous";
+        this.roles = new HashSet<>();
+    }
+
+    public CustomSecurityContext(ApplicationToken token) {
+        this.identifier = token.identifier;
+        this.roles = token.roles;
+    }
+
+    public CustomSecurityContext(MultiApplicationToken token, String applicationIdentifier) {
+        this.identifier = token.identifier;
+        this.roles = new HashSet<>(token.roles.get(applicationIdentifier));
+        requireNonNull(roles);
     }
 
     @Override
     public Principal getUserPrincipal() {
-        return () -> token.identifier;
+        return () -> identifier;
     }
 
     @Override
     public boolean isUserInRole(String role) {
-        return token.roles.contains(role);
+        return roles.contains(role);
     }
 
     @Override

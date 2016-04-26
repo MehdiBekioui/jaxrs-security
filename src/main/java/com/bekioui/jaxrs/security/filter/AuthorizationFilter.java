@@ -15,7 +15,10 @@
  */
 package com.bekioui.jaxrs.security.filter;
 
+import static com.bekioui.jaxrs.security.util.JWTUtils.verifyApplicationToken;
+import static com.bekioui.jaxrs.security.util.JWTUtils.verifyMultiApplicationToken;
 import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Priority;
@@ -23,19 +26,20 @@ import javax.ws.rs.Priorities;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.PreMatching;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
 
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import com.bekioui.jaxrs.security.context.AuthorizedContext;
-import com.bekioui.jaxrs.security.context.Token;
-import com.bekioui.jaxrs.security.descriptor.HasherDescriptor;
+import com.bekioui.jaxrs.security.context.ApplicationToken;
+import com.bekioui.jaxrs.security.context.CustomSecurityContext;
+import com.bekioui.jaxrs.security.context.MultiApplicationToken;
+import com.bekioui.jaxrs.security.descriptor.MultiApplicationTokenDescriptor;
 import com.bekioui.jaxrs.security.descriptor.TokenDescriptor;
-import com.bekioui.jaxrs.security.hash.Base64Hasher;
-import com.bekioui.jaxrs.security.hash.Hasher;
-import com.bekioui.jaxrs.security.serializer.JsonSerializer;
+import com.excilys.ebi.utils.spring.log.slf4j.InjectLogger;
 
 @Component
 @Provider
@@ -43,40 +47,63 @@ import com.bekioui.jaxrs.security.serializer.JsonSerializer;
 @Priority(Priorities.AUTHORIZATION)
 public final class AuthorizationFilter implements ContainerRequestFilter {
 
-	@Autowired(required = false)
-	private TokenDescriptor tokenDescriptor;
+    private static final String BEARER = "Bearer ";
 
-	@Autowired(required = false)
-	private HasherDescriptor hasherDescriptor;
+    @InjectLogger
+    private Logger logger;
 
-	@Autowired
-	private ApplicationContext applicationContext;
+    @Autowired(required = false)
+    private TokenDescriptor tokenDescriptor;
 
-	private Class<? extends Token> clazz;
+    @Autowired
+    private ApplicationContext applicationContext;
 
-	private Hasher<? extends Token> hasher;
+    @PostConstruct
+    private void postConstruct() {
+        if (tokenDescriptor == null) {
+            logger.info("No token descriptor was defined.");
+        }
+    }
 
-	@PostConstruct
-	private void postConstruct() {
-		clazz = (tokenDescriptor != null ? tokenDescriptor : TokenDescriptor.getDefault()).getTokenClass();
-		if (hasherDescriptor != null) {
-			switch (hasherDescriptor.getType()) {
-			case BASE64:
-				hasher = new Base64Hasher<>(clazz);
-				break;
-			}
-		}
-	}
+    @Override
+    public void filter(ContainerRequestContext requestContext) {
+        String authorization = requestContext.getHeaderString(AUTHORIZATION);
 
-	@Override
-	public void filter(ContainerRequestContext requestContext) {
-		String authorization = requestContext.getHeaderString(AUTHORIZATION);
-		if (authorization != null) {
-			Token token = hasher != null ? hasher.decode(authorization) : JsonSerializer.deserialize(authorization, clazz);
-			if (token != null) {
-				requestContext.setSecurityContext(new AuthorizedContext(token));
-			}
-		}
-	}
+        if (authorization == null || tokenDescriptor == null) {
+            return;
+        }
+
+        if (!authorization.startsWith(BEARER)) {
+            abort(requestContext, "Authorization header must use Bearer schema.");
+            return;
+        }
+
+        String jwt = authorization.substring(BEARER.length());
+
+        try {
+            switch (tokenDescriptor.getType()) {
+            case APPLICATION:
+                ApplicationToken applicationToken = verifyApplicationToken(jwt, tokenDescriptor.getSecret());
+                requestContext.setSecurityContext(new CustomSecurityContext(applicationToken));
+                break;
+            case MULTI_APPLICATION:
+                MultiApplicationTokenDescriptor descriptor = (MultiApplicationTokenDescriptor) tokenDescriptor;
+                MultiApplicationToken multiApplicationToken = verifyMultiApplicationToken(jwt, tokenDescriptor.getSecret());
+                requestContext.setSecurityContext(new CustomSecurityContext(multiApplicationToken, descriptor.getApplicationIdentifier()));
+                break;
+            default:
+                abort(requestContext, "Unknown token type descriptor: " + tokenDescriptor.getType());
+                return;
+            }
+        } catch (Exception e) {
+            String message = "Failed to decode token.";
+            logger.error(message, e);
+            abort(requestContext, message);
+        }
+    }
+
+    private void abort(ContainerRequestContext requestContext, String message) {
+        requestContext.abortWith(Response.status(UNAUTHORIZED).entity(message).build());
+    }
 
 }

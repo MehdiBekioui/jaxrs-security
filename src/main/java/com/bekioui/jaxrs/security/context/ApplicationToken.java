@@ -20,7 +20,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Token {
+public class ApplicationToken {
 
 	public static final String IDENTIFIER = "identifier";
 
@@ -33,7 +33,7 @@ public class Token {
 	public final Set<String> roles;
 
 	@JsonCreator
-	public Token(@JsonProperty(IDENTIFIER) String identifier, @JsonProperty(ROLES) Set<String> roles) {
+	public ApplicationToken(@JsonProperty(IDENTIFIER) String identifier, @JsonProperty(ROLES) Set<String> roles) {
 		this.identifier = identifier;
 		this.roles = roles;
 	}

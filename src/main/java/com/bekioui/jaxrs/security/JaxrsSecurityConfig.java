@@ -17,9 +17,13 @@ package com.bekioui.jaxrs.security;
 
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+import com.excilys.ebi.utils.spring.log.SpringLogConfig;
 
 @Configuration
 @ComponentScan
+@Import({ SpringLogConfig.class })
 public class JaxrsSecurityConfig {
 
 }
