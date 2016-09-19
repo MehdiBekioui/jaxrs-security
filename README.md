@@ -2,6 +2,10 @@
 
 **Jaxrs Security** provides an authorization filter that uses Authorization HTTP header to set JAX-RS API security context. It allows you to use [Javax security annotations](https://docs.oracle.com/javaee/7/api/javax/annotation/security/package-summary.html) in your resources.
 
+This library use [JWT](https://jwt.io/) for securely transmitting information between parties encoded as a JSON object.
+
+You can do a single sign-on (SSO) authentication by choosing the multiple application token type. 
+
 ## Get it
 
 Add the following to your Maven configuration:
@@ -10,13 +14,13 @@ Add the following to your Maven configuration:
 <dependency>
 	<groupId>com.bekioui.jaxrs</groupId>
 	<artifactId>jaxrs-security</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 </dependency>
 ```
 
 ## Use it
 
-Add the following to your Spring configuration file:
+Import the **JaxrsSecurityConfig** class in  your Spring configuration file:
 
 ```java
 @Configuration
@@ -26,18 +30,71 @@ public class SpringConfig {
 }
 ```
 
-By default Authorization HTTP header has to have the below JSON format:
+## Configure it
+
+You need to define a **secret** to encode and decode tokens on the server. In case you have a multiple application context, you need to define the same **secret** for all your applications. 
+
+### Single application context
+
+Token has an **identifier** that represents the user and a list of **roles** on the application.
 
 ```json
 {
   "identifier":"solid",
-  "roles":[
-    "ADMIN"
-  ]
+  "roles":["USER"]
 }
 ```
 
-You can custom your authorization JSON by inheriting Token class.
+Add the following to your Spring configuration file:
+
+```java
+@Bean
+public ApplicationTokenDescriptor getTokenDescriptor() {
+	return ApplicationTokenDescriptor.getSingleApplicationTokenDescriptor(secret);
+}
+```
+
+### Multiple application context
+
+Token has an **identifier** that represents the user and a map of **roles** which contains a list of roles for each application defined by its package name.
+
+```json
+{
+  "identifier":"solid",
+  "roles":{
+    "com.bekioui.app1":["USER"],
+    "com.bekioui.app2":["ADMIN"],
+  }
+}
+```
+
+Each application from your microservices architecture has to add the following to its Spring configuration file:
+
+```java
+@Bean
+public ApplicationTokenDescriptor getTokenDescriptor() {
+	return ApplicationTokenDescriptor.getMultipleApplicationTokenDescriptor("com.bekioui.app", secret);
+}
+```
+
+Don't forget to use the same **secret** for all your applications.
+
+### Resources
+
+Now you can add, for example, [RolesAllowed](https://docs.oracle.com/javaee/7/api/javax/annotation/security/RolesAllowed.html) annotation to specify which roles are allowed to access to your resource.
+
+```java
+@Path("/users")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public interface UserResource {
+
+    @GET
+    @RolesAllowed("USER")
+    List<String> findAllLogins();
+    
+}
+```
 
 ## License
 	
