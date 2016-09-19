@@ -35,8 +35,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import com.bekioui.jaxrs.security.context.CustomSecurityContext;
-import com.bekioui.jaxrs.security.descriptor.MultipleApplicationTokenDescriptor;
 import com.bekioui.jaxrs.security.descriptor.ApplicationTokenDescriptor;
+import com.bekioui.jaxrs.security.descriptor.MultipleApplicationTokenDescriptor;
 import com.bekioui.jaxrs.security.token.ApplicationToken;
 import com.bekioui.jaxrs.security.token.MultipleApplicationToken;
 import com.excilys.ebi.utils.spring.log.slf4j.InjectLogger;
@@ -47,63 +47,64 @@ import com.excilys.ebi.utils.spring.log.slf4j.InjectLogger;
 @Priority(Priorities.AUTHORIZATION)
 public final class AuthorizationFilter implements ContainerRequestFilter {
 
-    private static final String BEARER = "Bearer ";
+	private static final String BEARER = "Bearer ";
 
-    @InjectLogger
-    private Logger logger;
+	@InjectLogger
+	private Logger logger;
 
-    @Autowired(required = false)
-    private ApplicationTokenDescriptor tokenDescriptor;
+	@Autowired(required = false)
+	private ApplicationTokenDescriptor tokenDescriptor;
 
-    @Autowired
-    private ApplicationContext applicationContext;
+	@Autowired
+	private ApplicationContext applicationContext;
 
-    @PostConstruct
-    private void postConstruct() {
-        if (tokenDescriptor == null) {
-            logger.info("No token descriptor was defined.");
-        }
-    }
+	@PostConstruct
+	private void postConstruct() {
+		if (tokenDescriptor == null) {
+			logger.info("No token descriptor was defined.");
+		}
+	}
 
-    @Override
-    public void filter(ContainerRequestContext requestContext) {
-        String authorization = requestContext.getHeaderString(AUTHORIZATION);
+	@Override
+	public void filter(ContainerRequestContext requestContext) {
+		String authorization = requestContext.getHeaderString(AUTHORIZATION);
 
-        if (authorization == null || tokenDescriptor == null) {
-            return;
-        }
+		if (authorization == null || tokenDescriptor == null) {
+			requestContext.setSecurityContext(new CustomSecurityContext());
+			return;
+		}
 
-        if (!authorization.startsWith(BEARER)) {
-            abort(requestContext, "Authorization header must use Bearer schema.");
-            return;
-        }
+		if (!authorization.startsWith(BEARER)) {
+			abort(requestContext, "Authorization header must use Bearer schema.");
+			return;
+		}
 
-        String jwt = authorization.substring(BEARER.length());
+		String jwt = authorization.substring(BEARER.length());
 
-        try {
-            switch (tokenDescriptor.getType()) {
-            case SINGLE:
-                ApplicationToken applicationToken = verifyApplicationToken(jwt, tokenDescriptor.getSecret());
-                requestContext.setSecurityContext(new CustomSecurityContext(applicationToken));
-                break;
-            case MULTIPLE:
-                MultipleApplicationTokenDescriptor descriptor = (MultipleApplicationTokenDescriptor) tokenDescriptor;
-                MultipleApplicationToken multipleApplicationToken = verifyMultipleApplicationToken(jwt, tokenDescriptor.getSecret());
-                requestContext.setSecurityContext(new CustomSecurityContext(multipleApplicationToken, descriptor.getApplicationIdentifier()));
-                break;
-            default:
-                abort(requestContext, "Unknown token type descriptor: " + tokenDescriptor.getType());
-                return;
-            }
-        } catch (Exception e) {
-            String message = "Failed to decode token.";
-            logger.error(message, e);
-            abort(requestContext, message);
-        }
-    }
+		try {
+			switch (tokenDescriptor.getType()) {
+			case SINGLE:
+				ApplicationToken applicationToken = verifyApplicationToken(jwt, tokenDescriptor.getSecret());
+				requestContext.setSecurityContext(new CustomSecurityContext(applicationToken));
+				break;
+			case MULTIPLE:
+				MultipleApplicationTokenDescriptor descriptor = (MultipleApplicationTokenDescriptor) tokenDescriptor;
+				MultipleApplicationToken multipleApplicationToken = verifyMultipleApplicationToken(jwt, tokenDescriptor.getSecret());
+				requestContext.setSecurityContext(new CustomSecurityContext(multipleApplicationToken, descriptor.getApplicationIdentifier()));
+				break;
+			default:
+				abort(requestContext, "Unknown token type descriptor: " + tokenDescriptor.getType());
+				return;
+			}
+		} catch (Exception e) {
+			String message = "Failed to decode token.";
+			logger.error(message, e);
+			abort(requestContext, message);
+		}
+	}
 
-    private void abort(ContainerRequestContext requestContext, String message) {
-        requestContext.abortWith(Response.status(UNAUTHORIZED).entity(message).build());
-    }
+	private void abort(ContainerRequestContext requestContext, String message) {
+		requestContext.abortWith(Response.status(UNAUTHORIZED).entity(message).build());
+	}
 
 }
