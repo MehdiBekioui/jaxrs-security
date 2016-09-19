@@ -16,7 +16,7 @@
 package com.bekioui.jaxrs.security.filter;
 
 import static com.bekioui.jaxrs.security.util.JWTUtils.verifyApplicationToken;
-import static com.bekioui.jaxrs.security.util.JWTUtils.verifyMultiApplicationToken;
+import static com.bekioui.jaxrs.security.util.JWTUtils.verifyMultipleApplicationToken;
 import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 
@@ -34,11 +34,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import com.bekioui.jaxrs.security.context.ApplicationToken;
 import com.bekioui.jaxrs.security.context.CustomSecurityContext;
-import com.bekioui.jaxrs.security.context.MultiApplicationToken;
-import com.bekioui.jaxrs.security.descriptor.MultiApplicationTokenDescriptor;
-import com.bekioui.jaxrs.security.descriptor.TokenDescriptor;
+import com.bekioui.jaxrs.security.descriptor.MultipleApplicationTokenDescriptor;
+import com.bekioui.jaxrs.security.descriptor.ApplicationTokenDescriptor;
+import com.bekioui.jaxrs.security.token.ApplicationToken;
+import com.bekioui.jaxrs.security.token.MultipleApplicationToken;
 import com.excilys.ebi.utils.spring.log.slf4j.InjectLogger;
 
 @Component
@@ -53,7 +53,7 @@ public final class AuthorizationFilter implements ContainerRequestFilter {
     private Logger logger;
 
     @Autowired(required = false)
-    private TokenDescriptor tokenDescriptor;
+    private ApplicationTokenDescriptor tokenDescriptor;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -82,14 +82,14 @@ public final class AuthorizationFilter implements ContainerRequestFilter {
 
         try {
             switch (tokenDescriptor.getType()) {
-            case APPLICATION:
+            case SINGLE:
                 ApplicationToken applicationToken = verifyApplicationToken(jwt, tokenDescriptor.getSecret());
                 requestContext.setSecurityContext(new CustomSecurityContext(applicationToken));
                 break;
-            case MULTI_APPLICATION:
-                MultiApplicationTokenDescriptor descriptor = (MultiApplicationTokenDescriptor) tokenDescriptor;
-                MultiApplicationToken multiApplicationToken = verifyMultiApplicationToken(jwt, tokenDescriptor.getSecret());
-                requestContext.setSecurityContext(new CustomSecurityContext(multiApplicationToken, descriptor.getApplicationIdentifier()));
+            case MULTIPLE:
+                MultipleApplicationTokenDescriptor descriptor = (MultipleApplicationTokenDescriptor) tokenDescriptor;
+                MultipleApplicationToken multipleApplicationToken = verifyMultipleApplicationToken(jwt, tokenDescriptor.getSecret());
+                requestContext.setSecurityContext(new CustomSecurityContext(multipleApplicationToken, descriptor.getApplicationIdentifier()));
                 break;
             default:
                 abort(requestContext, "Unknown token type descriptor: " + tokenDescriptor.getType());

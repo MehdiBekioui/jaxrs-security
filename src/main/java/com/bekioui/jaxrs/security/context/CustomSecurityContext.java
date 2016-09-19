@@ -23,6 +23,9 @@ import java.util.Set;
 
 import javax.ws.rs.core.SecurityContext;
 
+import com.bekioui.jaxrs.security.token.ApplicationToken;
+import com.bekioui.jaxrs.security.token.MultipleApplicationToken;
+
 public class CustomSecurityContext implements SecurityContext {
 
     private final String identifier;
@@ -39,7 +42,7 @@ public class CustomSecurityContext implements SecurityContext {
         this.roles = token.roles;
     }
 
-    public CustomSecurityContext(MultiApplicationToken token, String applicationIdentifier) {
+    public CustomSecurityContext(MultipleApplicationToken token, String applicationIdentifier) {
         this.identifier = token.identifier;
         this.roles = new HashSet<>(token.roles.get(applicationIdentifier));
         requireNonNull(roles);

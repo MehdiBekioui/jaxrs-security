@@ -1,7 +1,7 @@
 package com.bekioui.jaxrs.security.util;
 
-import static com.bekioui.jaxrs.security.context.ApplicationToken.IDENTIFIER;
-import static com.bekioui.jaxrs.security.context.ApplicationToken.ROLES;
+import static com.bekioui.jaxrs.security.token.ApplicationToken.IDENTIFIER;
+import static com.bekioui.jaxrs.security.token.ApplicationToken.ROLES;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,8 +9,8 @@ import java.util.Set;
 
 import com.auth0.jwt.JWTSigner;
 import com.auth0.jwt.JWTVerifier;
-import com.bekioui.jaxrs.security.context.ApplicationToken;
-import com.bekioui.jaxrs.security.context.MultiApplicationToken;
+import com.bekioui.jaxrs.security.token.ApplicationToken;
+import com.bekioui.jaxrs.security.token.MultipleApplicationToken;
 
 public final class JWTUtils {
 
@@ -21,7 +21,7 @@ public final class JWTUtils {
         return create(claims, secret);
     }
 
-    public static String create(MultiApplicationToken token, String secret) {
+    public static String create(MultipleApplicationToken token, String secret) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(IDENTIFIER, token.identifier);
         claims.put(ROLES, token.roles);
@@ -32,7 +32,7 @@ public final class JWTUtils {
         return toApplicationToken(verify(jwt, secret));
     }
 
-    public static MultiApplicationToken verifyMultiApplicationToken(String jwt, String secret) throws Exception {
+    public static MultipleApplicationToken verifyMultipleApplicationToken(String jwt, String secret) throws Exception {
         return toMultiApplicationToken(verify(jwt, secret));
     }
 
@@ -50,8 +50,8 @@ public final class JWTUtils {
     }
 
     @SuppressWarnings("unchecked")
-    private static MultiApplicationToken toMultiApplicationToken(Map<String, Object> payload) {
-        return new MultiApplicationToken((String) payload.get(IDENTIFIER), (Map<String, Set<String>>) payload.get(ROLES));
+    private static MultipleApplicationToken toMultiApplicationToken(Map<String, Object> payload) {
+        return new MultipleApplicationToken((String) payload.get(IDENTIFIER), (Map<String, Set<String>>) payload.get(ROLES));
     }
 
 }
